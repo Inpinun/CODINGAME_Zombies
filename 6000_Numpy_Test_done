@@ -1,0 +1,273 @@
+import sys
+from math import sqrt
+import random
+import copy
+import time
+import numpy as np
+
+dest_x=dest_y =0
+nb_killed_zombie = 0
+nb_killed_human = 0
+score = 0
+
+
+#--------------------------
+#---DEFINITION DES CLASSES
+#--------------------------
+
+class Human :
+    def __init__ (self,human_id, human_x,human_y,life=True):
+        self.human_id = human_id
+        self.x=human_x
+        self.y=human_y
+        self.life = life
+
+class Zombie :
+    def __init__ (self,zombie_id, zombie_x,zombie_y,life=True):
+        self.zombie_id = zombie_id
+        self.x=zombie_x
+        self.y=zombie_y
+        self.life=life
+
+    def Move (self,l_human,ash):
+        dir_x = self.Get_direction (l_human,ash)[0]
+        dir_y = self.Get_direction (l_human,ash)[1]
+        dist_to_target = distance (self.x,self.y,dir_x,dir_y)
+        if dist_to_target <= 400 :
+            self.x = dir_x
+            self.y = dir_y
+        else : 
+            self.x = self.x + 400/dist_to_target * (dir_x-self.x)
+            self.y = self.y + 400/dist_to_target * (dir_y-self.y)
+        #print( "time Zombie move",time.time() -time_1,file=sys.stderr, flush=True) 
+
+    def Get_direction (self,l_human,ash):
+        dist_min = 18500
+        humain_plus_proche_zombie_index  = 0
+        for i in range(len(l_human)):
+            if distance (self.x,self.y,l_human[i].x,l_human[i].y) < dist_min and l_human[i].life:
+                dist_min = distance (self.x,self.y,l_human[i].x,l_human[i].y)
+                humain_plus_proche_zombie_index = i
+        if dist_min < distance (self.x,self.y,ash.x,ash.y) :
+            dir_x = l_human[humain_plus_proche_zombie_index ].x
+            dir_y = l_human[humain_plus_proche_zombie_index ].y
+        else :
+            dir_x = ash.x
+            dir_y = ash.y
+        return dir_x,dir_y,humain_plus_proche_zombie_index
+    
+    def Kill (self,l_human): #dealing collisions beetween Humans and Zombies
+        nb_human_killed = 0
+        for j in range (len(l_human)):
+            if (l_human[j].x,l_human[j].y) == (self.x,self.y) and self.life and l_human[j].life :
+                l_human[j].life = False
+                nb_human_killed += 1
+        return nb_human_killed
+    
+
+class Ash:
+    def __init__(self, x,y,life=True):
+        self.x=x
+        self.y=y
+        self.life = life
+
+    def Move (self,dir_x,dir_y) :
+        dist_to_target = distance (self.x,self.y,dir_x,dir_y)
+        if dist_to_target <= 1000 :
+            self.x = dir_x
+            self.y = dir_y          
+        else : 
+            self.x = self.x + 1000/dist_to_target * (dir_x-self.x)
+            self.y = self.y + 1000/dist_to_target * (dir_y-self.y)
+
+    def Kill (self,l_zombie) : # dealing collisions beetween Ash and Zombies
+        nb_zombie_killed = 0
+        for i in range(len(l_zombie)):
+            if distance (self.x,self.y,l_zombie[i].x,l_zombie[i].y) < 2000 and l_zombie[i].life :
+                l_zombie[i].life = False
+                nb_zombie_killed += 1
+     
+        return nb_zombie_killed
+        
+#--------------------------
+#---DEFINITION DES METHODES
+#--------------------------
+
+#Méthodes calcul DIstance
+
+distance = lambda x1,y1,x2,y2 : sqrt((x2-x1)**2+(y2-y1)**2)
+
+#-------------------------
+#-------------------------
+#-------------------------
+
+#-------------------------
+#------- game loop--------
+#-------------------------
+
+count_turn = 0
+
+while True:
+
+    count_turn += 1
+    x, y = [int(i) for i in input().split()]
+    time_1 = time.time()
+    ash = Ash (x,y)
+    l_zombie=np.array([],dtype=object)
+    l_human=np.array([],dtype=object)
+    if count_turn > 1 :
+        zombie_count_early_turn = zombie_count
+        human_count_early_turn = human_count
+
+    human_count = int(input())
+    l_fibonacci = [0,1]  
+    
+
+    for i in range(human_count):
+        human_id, human_x, human_y = [int(j) for j in input().split()]
+        human = Human (human_id, human_x, human_y)
+        l_human=np.append(l_human,human)
+
+    if count_turn > 1 :
+        zombie_count_early_turn = zombie_count
+    print( "time after human count",time.time() -time_1,file=sys.stderr, flush=True) 
+    zombie_count = int(input())
+    for i in range (2,zombie_count+3):
+        f = l_fibonacci[i-1]+l_fibonacci[i-2]
+        l_fibonacci.append(f) 
+    print("l_fibonacci",l_fibonacci, file=sys.stderr, flush=True)
+    for i in range(zombie_count):
+        zombie_id, zombie_x, zombie_y, zombie_xnext, zombie_ynext = [int(j) for j in input().split()]
+        zombie = Zombie (zombie_id, zombie_x, zombie_y)
+        l_zombie=np.append(l_zombie,zombie)
+    print( "after zombie count and fibonacci",time.time() -time_1,file=sys.stderr, flush=True) 
+
+    # SCORE du jeu
+    if count_turn > 1 :
+        nb_zombie_killed_early_turn = zombie_count_early_turn - zombie_count
+        for i in range (nb_zombie_killed_early_turn):
+            score += human_count_early_turn**2 * 10 * l_fibonacci[i+2]
+    print( " after SCORE du jeu ",time.time() -time_1,file=sys.stderr, flush=True) 
+
+    # ------------------------
+    #-----------GAME ---------
+    #-------------------------
+    
+
+    dest_possibilities = ((1000, 1000),(1000, 3000),(1000, 5000),(1000, 7000),(3000, 1000),(3000, 3000),(3000, 5000),(3000, 7000),(5000, 1000),(5000, 3000),(5000, 5000),(5000, 7000),(7000, 1000),(7000, 3000),(7000, 5000),(7000, 7000),(9000, 1000),(9000, 3000),(9000, 5000),(9000, 7000),(11000, 1000),(11000, 3000),(11000, 5000),(11000, 7000),(13000, 1000),(13000, 3000),(13000, 5000),(13000, 7000))
+    
+
+    #----------------------------------------
+    #------------ SIMU ----------------------
+    #----------------------------------------
+
+
+    #ordre de jeu 
+    # 1 - Les zombies se déplacent vers leurs cibles.
+    # 2 - Ash se déplace vers sa cible.
+    # 3 - Tout zombie se situant dans un rayon de moins de 2000 unités est détruit.
+    # 4 - Si un zombie se trouve sur un humain alors il le mange.
+
+    # Tests de simulation
+    nb_of_simulations_target = 28
+    l_simulations = []
+    l_simulation_score =[]
+
+    nb_of_simulations = 0
+    print( "before simu ",time.time() -time_1,file=sys.stderr, flush=True) 
+    while nb_of_simulations != nb_of_simulations_target :
+        
+        ash_simu = copy.deepcopy(ash)
+        l_human_simu = copy.deepcopy(l_human)
+        l_zombie_simu = copy.deepcopy(l_zombie)
+        nb_killed_zombie_simu = nb_killed_zombie
+
+        nb_killed_human_simu = nb_killed_human
+        
+        human_count_simu = human_count
+        nb_zombie_simu = zombie_count
+
+        score_simu = score
+        l_1_simulation = []
+
+        nb_turns_sim = 30
+        turn_count_simu =0
+        simu = True
+
+        dest_x = int(dest_possibilities[nb_of_simulations][0])
+        dest_y = int(dest_possibilities[nb_of_simulations][1])
+        #print("nb of simulations",nb_of_simulations, "dest_x  ",dest_x ,"dest_y ",dest_y , l_human_simu[0].life, file=sys.stderr, flush=True)
+
+        while turn_count_simu != nb_turns_sim and simu :
+            
+            nb_killed_human_simu = 0
+
+            # 1 - Les zombies se déplacent vers leurs cibles.
+            for j in range (len(l_zombie_simu)):
+                l_zombie_simu[j].Move(l_human_simu,ash_simu)
+            
+            # 2 - Ash se déplace vers sa cible 
+            ash_simu.Move (dest_x,dest_y)
+            l_1_simulation.append(dest_x)
+            l_1_simulation.append(dest_y)
+            
+
+            # 3 - Tout zombie se situant dans un rayon de moins de 2000 unités est détruit 
+            nb_killed_zombie_this_turn = ash_simu.Kill (l_zombie_simu) # -- 3.1 décompte du nombre de Zombie tués
+            nb_killed_zombie_simu += nb_killed_zombie_this_turn
+            nb_zombie_simu -= nb_killed_zombie_this_turn
+            
+            # -- 3.2 Calcul du score            
+            for i in range (nb_killed_zombie_this_turn):
+                score_simu += human_count_simu**2 * 10 * l_fibonacci[i+2]
+            
+            # 4 - Si un zombie se trouve sur un humain alors il le mange.
+            for i in range(len(l_zombie_simu)):
+                nb_killed_human_simu += l_zombie_simu[i].Kill(l_human_simu)
+            
+            # -- 4.1 décompte du nombre d'humain restant
+            human_count_simu -= nb_killed_human_simu
+            #print("human_count_simu ",human_count_simu,"nb_zombie_simu ",nb_zombie_simu , file=sys.stderr, flush=True)
+            if human_count_simu ==0 or nb_zombie_simu  == 0 :
+                if human_count_simu ==0 :
+                    score_simu += -100000
+                l_simulation_score.append(score_simu)
+                simu = False
+            
+
+            turn_count_simu += 1
+        print( "end simu ",time.time() -time_1,file=sys.stderr, flush=True) 
+        l_simulations.append(l_1_simulation)
+
+        nb_of_simulations += 1
+
+    # choix dest_x et dest_y
+    best_score = - 500000
+    index=0
+    #print("l_simulation_score ",l_simulation_score, file=sys.stderr, flush=True)
+    #print(l_simulations, file=sys.stderr, flush=True)
+    for i, value in enumerate (l_simulation_score):
+        if value > best_score :
+            best_score = value
+            index = i
+    #print("indexbest_score ",index,l_simulation_score, file=sys.stderr, flush=True)
+
+    dest_x = l_simulations[index][0]
+    dest_x = int(dest_x)
+    dest_y = l_simulations[index][1]
+    dest_y = int(dest_y)
+
+    time_2 = time.time()
+    print("best_score ",best_score , "time",time_2-time_1,file=sys.stderr, flush=True)
+
+    #----------------------------------------
+    #-------- FINAL ANSWER-------------------
+    #---- Your destination coordinates ------
+    #----------------------------------------
+    print(f"{dest_x} {dest_y}")
+
+
+
+
+
+# To debug: print("Debug messages...", file=sys.stderr, flush=True)
